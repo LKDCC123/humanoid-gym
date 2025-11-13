@@ -244,10 +244,26 @@ def get_args():
         args.sim_device += f":{args.sim_device_id}"
     return args
 
-
+import torch.onnx
 def export_policy_as_jit(actor_critic, path):
     os.makedirs(path, exist_ok=True)
-    path = os.path.join(path, "policy_1.pt")
+    path1 = os.path.join(path, "policy_1.pt")
     model = copy.deepcopy(actor_critic.actor).to("cpu")
     traced_script_module = torch.jit.script(model)
-    traced_script_module.save(path)
+    traced_script_module.save(path1)
+                                                         
+
+    path_onnx = os.path.join(path, "policy_1.onnx")                                                              
+    dummy_input = torch.randn(1, 47*15)
+    torch.onnx.export(                                                    
+        model,                                                
+        dummy_input,                                                      
+        path_onnx,                                                 
+        export_params=True,                                               
+        opset_version=11,                                                 
+        do_constant_folding=True,                                         
+        input_names=["input"],                                            
+        output_names=["output"],                                          
+    )                                                                     
+    print(f"ONNX policy exported to {path_onnx}")                  
+

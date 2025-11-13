@@ -247,7 +247,7 @@ class XBotLCfgPPO(LeggedRobotCfgPPO):
     class runner:
         policy_class_name = 'ActorCritic'
         algorithm_class_name = 'PPO'
-        num_steps_per_env = 60  # per iteration
+        num_steps_per_env = 24  # per iteration
         max_iterations = 3001  # number of policy updates
 
         # logging
