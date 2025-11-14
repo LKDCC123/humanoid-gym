@@ -128,9 +128,9 @@ class HhfcFreeEnv(LeggedRobot):
         scale_2 = 2 * scale_1
         # left foot stance phase set to default joint pos
         sin_pos_l[sin_pos_l > 0] = 0
-        self.ref_dof_pos[:, 0] = sin_pos_l * scale_1
-        self.ref_dof_pos[:, 3] = -sin_pos_l * scale_2
-        self.ref_dof_pos[:, 4] = -sin_pos_l * scale_1
+        self.ref_dof_pos[:, 0] = -sin_pos_l * scale_1
+        self.ref_dof_pos[:, 3] = sin_pos_l * scale_2
+        self.ref_dof_pos[:, 4] = sin_pos_l * scale_1
         # right foot stance phase set to default joint pos
         sin_pos_r[sin_pos_r < 0] = 0
         self.ref_dof_pos[:, 6] = sin_pos_r * scale_1
@@ -336,6 +336,8 @@ class HhfcFreeEnv(LeggedRobot):
         self.feet_air_time += self.dt
         air_time = self.feet_air_time.clamp(0, 0.5) * first_contact
         self.feet_air_time *= ~self.contact_filt
+        # print(self.feet_air_time)
+        # print(self._reward_feet_contact_number)
         return air_time.sum(dim=1)
 
     def _reward_feet_contact_number(self):
@@ -537,6 +539,7 @@ class HhfcFreeEnv(LeggedRobot):
         Encourages smoothness in the robot's actions by penalizing large differences between consecutive actions.
         This is important for achieving fluid motion and reducing mechanical stress.
         """
+        # print(self.dof_names)
         term_1 = torch.sum(torch.square(
             self.last_actions - self.actions), dim=1)
         term_2 = torch.sum(torch.square(

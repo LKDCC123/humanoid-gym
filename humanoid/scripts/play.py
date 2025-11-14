@@ -62,7 +62,6 @@ def play(args):
     env_cfg.noise.curriculum = False
     env_cfg.noise.noise_level = 0.5
 
-
     train_cfg.seed = 123145
     print("train_cfg.runner_class_name:", train_cfg.runner_class_name)
 

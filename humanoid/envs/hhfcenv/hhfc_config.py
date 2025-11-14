@@ -200,9 +200,9 @@ class HhfcCfg(LeggedRobotCfg):
         min_dist = 0.25
         max_dist = 1.0
         # put some settings here for LLM parameter tuning
-        target_joint_pos_scale = 0.2    # rad
+        target_joint_pos_scale = 0.3    # rad
         target_feet_height = 0.06        # m
-        cycle_time = 0.8                # sec
+        cycle_time = 0.68                # sec
         # if true negative total rewards are clipped at zero (avoids early termination problems)
         only_positive_rewards = True
         # tracking reward = exp(error*sigma)
@@ -212,7 +212,7 @@ class HhfcCfg(LeggedRobotCfg):
         class scales:
             # reference motion tracking
             joint_pos = 3.2
-            feet_clearance = 0.5 # to rarget feet height
+            feet_clearance = 1.0 #0.5 # to rarget feet height
             feet_contact_number = 1.8
             # gait
             feet_air_time = 1.
@@ -230,7 +230,7 @@ class HhfcCfg(LeggedRobotCfg):
             # base pos
             default_joint_pos = 0.5
             orientation = 1.
-            base_height = 0.2
+            base_height = 0.5 #0.2
             base_acc = 0.2
             # energy
             action_smoothness = -0.002
