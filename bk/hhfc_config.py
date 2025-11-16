@@ -98,7 +98,7 @@ class HhfcCfg(LeggedRobotCfg):
             height_measurements = 0.1
 
     class init_state(LeggedRobotCfg.init_state):
-        pos = [0.0, 0.0, 0.876]
+        pos = [0.0, 0.0, 0.867]
 
         default_joint_angles = {  # = target angles [rad] when action = 0.0
             'Lleg_hip_p_joint': 0.3,
@@ -171,23 +171,27 @@ class HhfcCfg(LeggedRobotCfg):
             contact_collection = 2
 
     class domain_rand:
-        randomize_friction = False
-        friction_range = [0.1, 2.0]
-        randomize_base_mass = False
-        added_mass_range = [-5., 5.]
-        push_robots = False # True
+        randomize_friction = True
+        friction_range = [0.05, 2.0]#1)[0.1, 2.0]
+        randomize_base_mass = True
+        added_mass_range = [-5., 10.]#1)[-5., 5.]
+        randomize_base_postion = True # False
+        added_position_range = [-0.02, 0.02]
+        push_robots = True # True
         push_interval_s = 4
         max_push_vel_xy = 0.2
         max_push_ang_vel = 0.4
         # dynamic randomization
-        action_delay = 0 * 0.5
-        action_noise = 0 * 0.02
+        action_delay = 0.6#1)0.5
+        action_noise = 0.025#1)0.02
 
     class commands(LeggedRobotCfg.commands):
         # Vers: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
         num_commands = 4
         resampling_time = 8.  # time before command are changed[s]
         heading_command = True  # if true: compute ang vel command from heading error
+        # probability to force a sampled command to zero (idle command)
+        zero_command_prob = 0.4  # tune: 0.0 = never force zero, 1.0 = always zero
 
         class ranges:
             lin_vel_x = [-0.3, 0.6]   # min max [m/s]
@@ -200,19 +204,23 @@ class HhfcCfg(LeggedRobotCfg):
         min_dist = 0.25
         max_dist = 1.0
         # put some settings here for LLM parameter tuning
-        target_joint_pos_scale = 0.2    # rad
-        target_feet_height = 0.06        # m
-        cycle_time = 0.8                # sec
+        target_joint_pos_scale = 0.3    # rad
+        target_feet_height = 0.04 #1)0.06       # m
+        cycle_time = 0.68                # sec
         # if true negative total rewards are clipped at zero (avoids early termination problems)
         only_positive_rewards = True
         # tracking reward = exp(error*sigma)
         tracking_sigma = 5
         max_contact_force = 800  # Forces above this value are penalized
-
+        # if stand ------
+        if_stand_still = False
+        stand_lin_vel_tol = 0.01
+        stand_ang_vel_tol = 0.01
+        # ---------------
         class scales:
             # reference motion tracking
             joint_pos = 3.2
-            feet_clearance = 0.5 #0.5 # to rarget feet height
+            feet_clearance = 0.5#1)1.0 # to rarget feet height
             feet_contact_number = 1.8
             # gait
             feet_air_time = 1.
@@ -222,15 +230,15 @@ class HhfcCfg(LeggedRobotCfg):
             # contact
             feet_contact_forces = -0.01
             # vel tracking
-            tracking_lin_vel = 1.2
-            tracking_ang_vel = 1.1
-            vel_mismatch_exp = 0.5  # lin_z; ang x,y
-            low_speed = 0.2
-            track_vel_hard = 0.5
+            tracking_lin_vel = 2.5#2)1.3#1)1.2
+            tracking_ang_vel = 2.0#2)1.2#1)1.1
+            vel_mismatch_exp = 1.0#2)0.5#1)0.5  # lin_z; ang x,y
+            low_speed = 0.5#2)0.2
+            track_vel_hard = 1.0#2)0.6#1)0.5
             # base pos
             default_joint_pos = 0.5
-            orientation = 1.
-            base_height = 0.5 #0.2
+            orientation = 1.1#1)1.
+            base_height = 0.5 
             base_acc = 0.2
             # energy
             action_smoothness = -0.002
@@ -238,6 +246,8 @@ class HhfcCfg(LeggedRobotCfg):
             dof_vel = -5e-4
             dof_acc = -1e-7
             collision = -1.
+            # standing
+            # joint_stand = 1.0
 
     class normalization:
         class obs_scales:
