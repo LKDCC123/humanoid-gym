@@ -30,6 +30,17 @@
 
 from humanoid.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 
+class train_cfg:
+    first_train = True # after 1500 iter then set to False
+
+    turn_on_rand = True
+    action_rand = 1.0
+    vel_track_amp = 2.0
+
+    if first_train:
+        turn_on_rand = False
+        action_rand = 0.0
+        vel_track_amp = 1.0
 
 class HhfcCfg(LeggedRobotCfg):
     """
@@ -171,17 +182,21 @@ class HhfcCfg(LeggedRobotCfg):
             contact_collection = 2
 
     class domain_rand:
-        randomize_friction = False
+        # terrain randomization
+        randomize_friction = train_cfg.turn_on_rand
         friction_range = [0.1, 2.0]
-        randomize_base_mass = False
-        added_mass_range = [-5., 5.]
-        push_robots = False # True
+        randomize_base_mass = train_cfg.turn_on_rand
+        added_mass_range = [-5., 15.]
+        push_robots = train_cfg.turn_on_rand # True
         push_interval_s = 4
         max_push_vel_xy = 0.2
         max_push_ang_vel = 0.4
         # dynamic randomization
-        action_delay = 0 * 0.5
-        action_noise = 0 * 0.02
+        action_delay = train_cfg.action_rand * 0.5
+        action_noise = train_cfg.action_rand * 0.02
+        # pd gain randomization
+        stiffness_noise = train_cfg.action_rand * 0.15
+        damping_noise = train_cfg.action_rand * 0.1
 
     class commands(LeggedRobotCfg.commands):
         # Vers: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
@@ -222,11 +237,11 @@ class HhfcCfg(LeggedRobotCfg):
             # contact
             feet_contact_forces = -0.01
             # vel tracking
-            tracking_lin_vel = 1.2
-            tracking_ang_vel = 1.1
-            vel_mismatch_exp = 0.5  # lin_z; ang x,y
-            low_speed = 0.2
-            track_vel_hard = 0.5
+            tracking_lin_vel = 1.2 * train_cfg.vel_track_amp
+            tracking_ang_vel = 1.1 * train_cfg.vel_track_amp
+            vel_mismatch_exp = 0.5 * train_cfg.vel_track_amp  # lin_z; ang x,y
+            low_speed = 0.2 * train_cfg.vel_track_amp
+            track_vel_hard = 0.5 * train_cfg.vel_track_amp
             # base pos
             default_joint_pos = 0.5
             orientation = 1.
@@ -272,7 +287,7 @@ class HhfcCfgPPO(LeggedRobotCfgPPO):
         policy_class_name = 'ActorCritic'
         algorithm_class_name = 'PPO'
         num_steps_per_env = 24  # per iteration
-        max_iterations = 3001  # number of policy updates
+        max_iterations = 1501  # number of policy updates
 
         # logging
         save_interval = 100  # Please check for potential savings every `save_interval` iterations.

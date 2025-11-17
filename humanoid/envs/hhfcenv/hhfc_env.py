@@ -37,7 +37,7 @@ import torch
 from humanoid.envs import LeggedRobot
 
 from humanoid.utils.terrain import  HumanoidTerrain
-
+from matplotlib import pyplot as plt
 
 class HhfcFreeEnv(LeggedRobot):
     '''
@@ -115,6 +115,25 @@ class HhfcFreeEnv(LeggedRobot):
         # Double support phase
         stance_mask[torch.abs(sin_pos) < 0.1] = 1
 
+        # logging only ------------------------------------
+        # if not hasattr(self, "stance_mask_local"):
+        #     self.stance_mask_local = []
+
+        # self.stance_mask_local.append(stance_mask.detach().cpu().numpy())
+
+        # # Convert log to numpy when needed (not for plotting inside env!)
+        # self.stance_mask_re = np.array(self.stance_mask_local)
+
+        # plt.subplot(4, 2, 3)
+        # plt.plot(np.array(self.stance_mask_re)[:, 0, 0], 'r')
+        # plt.subplot(4, 2, 4)
+        # plt.plot(np.array(self.stance_mask_re)[:, 25, 0], 'r')
+        # plt.subplot(4, 2, 7)
+        # plt.plot(np.array(self.stance_mask_re)[:, 0, 1], 'b')
+        # plt.subplot(4, 2, 8)
+        # plt.plot(np.array(self.stance_mask_re)[:, 25, 1], 'b')
+        # logging only ------------------------------------
+
         return stance_mask
     
 
@@ -142,6 +161,34 @@ class HhfcFreeEnv(LeggedRobot):
         self.ref_action = 2 * self.ref_dof_pos
 
         self.ref_dof_pos += self.default_dof_pos
+
+        # record ref_dof_pos of environment index 1 ---------
+        # if not hasattr(self, "ref_dof_history_f"):
+        #     # store as list of numpy arrays
+        #     self.ref_dof_history_f = []
+        # if not hasattr(self, "ref_dof_history_b"):
+        #     # store as list of numpy arrays
+        #     self.ref_dof_history_b = []
+
+        # # detach and move to CPU before storing to avoid holding computational graph / device tensors
+        # self.ref_dof_history_f.append(self.ref_dof_pos[0, :].detach().cpu().numpy())
+        # self.ref_dof_history_b.append(self.ref_dof_pos[25, :].detach().cpu().numpy())
+        # self.ref_dof_history_f_re = np.array(self.ref_dof_history_f)  # convert to array for easy indexing
+        # self.ref_dof_history_b_re = np.array(self.ref_dof_history_b)  # convert to array for easy indexing
+                
+        # plt.subplot(4, 2, 1)
+        # plt.plot(self.ref_dof_history_f_re[:, 4], 'r')
+        # plt.subplot(4, 2, 2)
+        # plt.plot(self.ref_dof_history_b_re[:, 4], 'r')
+
+        # plt.subplot(4, 2, 5)
+        # plt.plot(self.ref_dof_history_f_re[:, 4+6], 'b')
+        # plt.subplot(4, 2, 6)
+        # plt.plot(self.ref_dof_history_b_re[:, 4+6], 'b')
+
+        # plt.pause(0.001)
+        # record ref_dof_pos of environment index 1 ---------
+        
 
 
     def create_sim(self):

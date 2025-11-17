@@ -500,7 +500,25 @@ class LeggedRobot(BaseTask):
                 self.d_gains[:, i] = 0.
                 print(f"PD gain of joint {name} were not defined, setting them to zero")
         
-
+        # pd gain randomization --------------------------------
+        # optional per-env, per-dof PD gain randomization
+        # cfg.domain_rand.p_gain_noise and d_gain_noise are relative amplitudes (e.g. 0.1 => +/-10%)
+        p_noise_amp = self.cfg.domain_rand.stiffness_noise
+        d_noise_amp = self.cfg.domain_rand.damping_noise
+        if p_noise_amp > 0.0 or d_noise_amp > 0.0:
+            # store base gains for debugging / reproducibility
+            self.base_p_gains = self.p_gains.clone()
+            self.base_d_gains = self.d_gains.clone()
+            # sample uniform factors in [1-amp, 1+amp]
+            if p_noise_amp > 0.0:
+                p_factors = 1.0 + (torch.rand(self.num_envs, self.num_dofs, device=self.device) * 2.0 - 1.0) * p_noise_amp
+                # broadcast/match shapes and apply
+                self.p_gains[:, :self.num_dofs] = self.p_gains[:, :self.num_dofs] * p_factors
+            if d_noise_amp > 0.0:
+                d_factors = 1.0 + (torch.rand(self.num_envs, self.num_dofs, device=self.device) * 2.0 - 1.0) * d_noise_amp
+                self.d_gains[:, :self.num_dofs] = self.d_gains[:, :self.num_dofs] * d_factors
+        # ------------------------------------------------------
+        
         self.rand_push_force = torch.zeros((self.num_envs, 3), dtype=torch.float32, device=self.device)
         self.rand_push_torque = torch.zeros((self.num_envs, 3), dtype=torch.float32, device=self.device)
         self.default_dof_pos = self.default_dof_pos.unsqueeze(0)
