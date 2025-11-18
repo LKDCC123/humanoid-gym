@@ -31,8 +31,15 @@
 from humanoid.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 
 class train_cfg:
-    first_train = True # after 1500 iter then set to False
 
+    """
+    after 1500 iter with first_train True, 
+    then set first_train False and train 1000 iter
+    """
+    first_train = False 
+                # True False
+                           
+    # paras for randomization ----------  
     turn_on_rand = True
     action_rand = 1.0
     vel_track_amp = 2.0
@@ -41,6 +48,38 @@ class train_cfg:
         turn_on_rand = False
         action_rand = 0.0
         vel_track_amp = 1.0
+    # -----------------------------------
+
+    """
+    after trained first_train with False, 
+    then set turn_on_curriculum to True and train 4000 
+    """
+    turn_on_curriculum = False
+                       # True False
+    # paras for curriculum learning -----
+    terrain_type = 'plane'
+
+    if turn_on_curriculum:
+        terrain_type = 'trimesh'
+    # -----------------------------------
+
+    """
+    before final implementation, 
+    set True for smoothness and train 
+    """
+    Final_train_on = True
+                    # True False
+    # paras for final training ---------
+    smoothness_amp = 1.0
+    energy_amp = 1.0
+    vel_track_amp_final = 1.0
+
+    if Final_train_on:
+        smoothness_amp = 100.0
+        energy_amp = 10.0
+        vel_track_amp_final = 5.0
+    # -----------------------------------
+
 
 class HhfcCfg(LeggedRobotCfg):
     """
@@ -80,8 +119,7 @@ class HhfcCfg(LeggedRobotCfg):
         fix_base_link = False
 
     class terrain(LeggedRobotCfg.terrain):
-        mesh_type = 'plane'
-        # mesh_type = 'trimesh'
+        mesh_type = train_cfg.terrain_type
         curriculum = False
         # rough terrain only:
         measure_heights = False
@@ -91,9 +129,9 @@ class HhfcCfg(LeggedRobotCfg):
         terrain_width = 8.
         num_rows = 20  # number of terrain rows (levels)
         num_cols = 20  # number of terrain cols (types)
-        max_init_terrain_level = 10  # starting curriculum state
+        max_init_terrain_level = 15  # starting curriculum state
         # plane; obstacles; uniform; slope_up; slope_down, stair_up, stair_down
-        terrain_proportions = [0.2, 0.2, 0.4, 0.1, 0.1, 0, 0]
+        terrain_proportions = [0.2, 0.2, 0.2, 0.1, 0.1, 0.1, 0.1]
         restitution = 0.
 
     class noise:
@@ -237,21 +275,21 @@ class HhfcCfg(LeggedRobotCfg):
             # contact
             feet_contact_forces = -0.01
             # vel tracking
-            tracking_lin_vel = 1.2 * train_cfg.vel_track_amp
+            tracking_lin_vel = 1.2 * train_cfg.vel_track_amp * train_cfg.vel_track_amp_final
             tracking_ang_vel = 1.1 * train_cfg.vel_track_amp
-            vel_mismatch_exp = 0.5 * train_cfg.vel_track_amp  # lin_z; ang x,y
+            vel_mismatch_exp = 0.5 * train_cfg.vel_track_amp * train_cfg.vel_track_amp_final  # lin_z; ang x,y
             low_speed = 0.2 * train_cfg.vel_track_amp
-            track_vel_hard = 0.5 * train_cfg.vel_track_amp
+            track_vel_hard = 0.5 * train_cfg.vel_track_amp * train_cfg.vel_track_amp_final
             # base pos
             default_joint_pos = 0.5
             orientation = 1.
             base_height = 0.5 #0.2
             base_acc = 0.2
             # energy
-            action_smoothness = -0.002
-            torques = -1e-5
-            dof_vel = -5e-4
-            dof_acc = -1e-7
+            action_smoothness = -0.002 * train_cfg.smoothness_amp
+            torques = -1e-5 * train_cfg.energy_amp
+            dof_vel = -5e-4 * train_cfg.energy_amp
+            dof_acc = -1e-7 * train_cfg.energy_amp
             collision = -1.
 
     class normalization:
