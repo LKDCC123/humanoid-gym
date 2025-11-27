@@ -33,28 +33,45 @@ from humanoid.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCf
 class train_cfg:
 
     """
-    after 1500 iter with first_train True, 
-    then set first_train False and train 1000 iter
+    after 10000 iter with first_train True, 
+    then set first_train False and train 10000 iter
     """
     first_train = False 
-                # True False
-                           
-    # paras for randomization ----------  
-    turn_on_rand = True
-    action_rand = 1.0
-    vel_track_amp = 2.0
+                # True False                       
+    # paras for speed up training -----
+    energy_amp = 1.0
+    max_spd_amp = 1.0
+    feet_clearance_amp = 1.0
+    vel_track_amp = 1.0
 
-    if first_train:
-        turn_on_rand = False
-        action_rand = 0.0
-        vel_track_amp = 1.0
+    if first_train == False:
+        energy_amp = 4.0
+        max_spd_amp = 3.0
+        feet_clearance_amp = 0.66
+        vel_track_amp = 1.5
+    # -----------------------------------
+
+    """
+    after train speed up with first_train False,
+    then set rand_on to True and train 10000 iter
+    """
+    rand_on = True
+            # True False
+    # paras for randomization ----------  
+    turn_on_rand = False
+    action_rand = 0.0
+
+    if rand_on:
+        turn_on_rand = True
+        action_rand = 1.0
+        vel_track_amp = 2.0
     # -----------------------------------
 
     """
     after trained first_train with False, 
-    then set turn_on_curriculum to True and train 4000 
+    then set turn_on_curriculum to True and train 20000 iter 
     """
-    turn_on_curriculum = False
+    turn_on_curriculum = True
                        # True False
     # paras for curriculum learning -----
     terrain_type = 'plane'
@@ -65,19 +82,19 @@ class train_cfg:
 
     """
     before final implementation, 
-    set True for smoothness and train 
+    set True for smoothness and train 15000 iter
     """
     Final_train_on = True
                     # True False
     # paras for final training ---------
     smoothness_amp = 1.0
-    energy_amp = 1.0
     vel_track_amp_final = 1.0
 
     if Final_train_on:
         smoothness_amp = 100.0
         energy_amp = 10.0
         vel_track_amp_final = 5.0
+        terrain_type = 'plane'
     # -----------------------------------
 
 
@@ -222,13 +239,13 @@ class HhfcCfg(LeggedRobotCfg):
     class domain_rand:
         # terrain randomization
         randomize_friction = train_cfg.turn_on_rand
-        friction_range = [0.1, 2.0]
+        friction_range = [0.2, 2.0]
         randomize_base_mass = train_cfg.turn_on_rand
         added_mass_range = [-5., 15.]
         push_robots = train_cfg.turn_on_rand # True
-        push_interval_s = 4
-        max_push_vel_xy = 0.2
-        max_push_ang_vel = 0.4
+        push_interval_s = 5
+        max_push_vel_xy = 0.4
+        max_push_ang_vel = 0.6
         # dynamic randomization
         action_delay = train_cfg.action_rand * 0.5
         action_noise = train_cfg.action_rand * 0.02
@@ -243,7 +260,7 @@ class HhfcCfg(LeggedRobotCfg):
         heading_command = True  # if true: compute ang vel command from heading error
 
         class ranges:
-            lin_vel_x = [-0.3, 0.6]   # min max [m/s]
+            lin_vel_x = [-0.3 * train_cfg.max_spd_amp, 0.6 * train_cfg.max_spd_amp]   # min max [m/s]
             lin_vel_y = [-0.3, 0.3]   # min max [m/s]
             ang_vel_yaw = [-0.3, 0.3] # min max [rad/s]
             heading = [-3.14, 3.14]
@@ -253,8 +270,8 @@ class HhfcCfg(LeggedRobotCfg):
         min_dist = 0.25
         max_dist = 1.0
         # put some settings here for LLM parameter tuning
-        target_joint_pos_scale = 0.2    # rad
-        target_feet_height = 0.06        # m
+        target_joint_pos_scale = 0.3 * train_cfg.feet_clearance_amp    # rad
+        target_feet_height = 0.05 * train_cfg.feet_clearance_amp       # m
         cycle_time = 0.8                # sec
         # if true negative total rewards are clipped at zero (avoids early termination problems)
         only_positive_rewards = True
@@ -264,14 +281,14 @@ class HhfcCfg(LeggedRobotCfg):
 
         class scales:
             # reference motion tracking
-            joint_pos = 3.2
-            feet_clearance = 0.5 #0.5 # to rarget feet height
+            joint_pos = 3.5
+            feet_clearance = 0.7 * train_cfg.feet_clearance_amp #0.5 # to rarget feet height
             feet_contact_number = 1.8
             # gait
             feet_air_time = 1.
             foot_slip = -0.05
-            feet_distance = 0.2
-            knee_distance = 0.2
+            feet_distance = 0.3
+            knee_distance = 0.3
             # contact
             feet_contact_forces = -0.01
             # vel tracking

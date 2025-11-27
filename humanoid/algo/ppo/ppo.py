@@ -36,6 +36,9 @@ import torch.optim as optim
 from .actor_critic import ActorCritic
 from .rollout_storage import RolloutStorage
 
+# mirror
+from .mirror_function import MirrorFunction
+
 class PPO:
     actor_critic: ActorCritic
     def __init__(self,
@@ -46,6 +49,8 @@ class PPO:
                  gamma=0.998,
                  lam=0.95,
                  value_loss_coef=1.0,
+                 sym_mean_loss_coef = 0.05, # mirror symmetry loss coefficient
+                 sym_std_loss_coef = 0.005, # mirror symmetry loss coefficient
                  entropy_coef=0.0,
                  learning_rate=1e-3,
                  max_grad_norm=1.0,
@@ -78,6 +83,10 @@ class PPO:
         self.lam = lam
         self.max_grad_norm = max_grad_norm
         self.use_clipped_value_loss = use_clipped_value_loss
+
+        # mirror symmetry loss coefficients
+        self.sym_mean_loss_coef = sym_mean_loss_coef
+        self.sym_std_loss_coef = sym_std_loss_coef
 
     def init_storage(self, num_envs, num_transitions_per_env, actor_obs_shape, critic_obs_shape, action_shape):
         self.storage = RolloutStorage(num_envs, num_transitions_per_env, actor_obs_shape, critic_obs_shape, action_shape, self.device)
@@ -116,9 +125,33 @@ class PPO:
         last_values= self.actor_critic.evaluate(last_critic_obs).detach()
         self.storage.compute_returns(last_values, self.gamma, self.lam)
 
+    # mirror
+    def compute_symmetry_loss(self, actor_critic, obs_batch, masks_batch, hid_states_batch):
+        # step 1: get original mean and std from actor_critic (with out backprop)
+        actor_critic.act(obs_batch, masks=masks_batch, hidden_states=hid_states_batch[0])
+        orig_mean = actor_critic.action_mean
+        orig_std = actor_critic.action_std  
+
+        true_mirror_mean = MirrorFunction.action_mean_mirror(orig_mean)
+        true_mirror_std = MirrorFunction.action_std_mirror(orig_std)
+        
+        # step 2: get mirrored mean and std from actor_critic (with backprop)
+        mirrored_obs = MirrorFunction.observation_mirror(obs_batch)
+        actor_critic.act(mirrored_obs, masks=masks_batch, hidden_states=hid_states_batch[0])
+        pred_mirror_mean = actor_critic.action_mean
+        pred_mirror_std = actor_critic.action_std
+
+        # step 3: compute symmetry loss of mean and std
+        sym_mean_loss = torch.mean((pred_mirror_mean - true_mirror_mean)**2)
+        sym_std_loss = torch.mean((pred_mirror_std - true_mirror_std)**2)
+        
+        return sym_mean_loss, sym_std_loss
+
     def update(self):
         mean_value_loss = 0
         mean_surrogate_loss = 0
+        mean_sym_loss = 0
+        std_sym_loss = 0
 
         generator = self.storage.mini_batch_generator(self.num_mini_batches, self.num_learning_epochs)
         for obs_batch, critic_obs_batch, actions_batch, target_values_batch, advantages_batch, returns_batch, old_actions_log_prob_batch, \
@@ -165,7 +198,14 @@ class PPO:
                 else:
                     value_loss = (returns_batch - value_batch).pow(2).mean()
 
-                loss = surrogate_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy_batch.mean()
+                # mirror symmetry loss
+                sym_mean_loss, sym_std_loss = self.compute_symmetry_loss(self.actor_critic, obs_batch, masks_batch, hid_states_batch)
+
+                # update step again
+                self.actor_critic.act(obs_batch, masks=masks_batch, hidden_states=hid_states_batch[0])
+
+                # compute final loss
+                loss = surrogate_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy_batch.mean() + self.sym_mean_loss_coef * sym_mean_loss + self.sym_std_loss_coef * sym_std_loss
 
                 # Gradient step
                 self.optimizer.zero_grad()
@@ -175,10 +215,14 @@ class PPO:
 
                 mean_value_loss += value_loss.item()
                 mean_surrogate_loss += surrogate_loss.item()
+                mean_sym_loss += sym_mean_loss.item() # mirror symmetry loss
+                std_sym_loss += sym_std_loss.item() # mirror symmetry loss
 
         num_updates = self.num_learning_epochs * self.num_mini_batches
         mean_value_loss /= num_updates
         mean_surrogate_loss /= num_updates
+        mean_sym_loss /= num_updates # mirror symmetry loss
+        std_sym_loss /= num_updates # mirror symmetry loss
         self.storage.clear()
 
-        return mean_value_loss, mean_surrogate_loss
+        return mean_value_loss, mean_surrogate_loss, mean_sym_loss, std_sym_loss
